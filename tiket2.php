@@ -1,269 +1,248 @@
 <?php
-// Koneksi ke database
-$koneksi = new mysqli("localhost", "root", "", "tiket");
-if ($koneksi->connect_error) {
-    die("Koneksi gagal: " . $koneksi->connect_error);
+$host = "localhost";
+$user = "root";
+$password = "";
+$database = "tiket";
+
+$koneksi = mysqli_connect($host, $user, $password, $database);
+if (!$koneksi) {
+    die("Koneksi gagal: " . mysqli_connect_error());
 }
 
-#ini shafwa
-
-// Delete pemesanan jika diminta
-if (isset($_GET['delete'])) {
-    $id_hapus = $_GET['delete'];
-    $koneksi->query("DELETE FROM pemesanan WHERE id_penumpang='$id_hapus'");
-    header("Location: ?view=1");
-    exit();
+// Ambil data jadwal kereta dari database
+$query_jadwal = "SELECT * FROM keretaapi";
+$result_jadwal = mysqli_query($koneksi, $query_jadwal);
+$jadwal_keretaapi = [];
+while ($row = mysqli_fetch_assoc($result_jadwal)) {
+    $jadwal_keretaapi[] = $row;
 }
 
-// Update data jika form edit dikirim
-if (isset($_POST['update'])) {
-    $id = $_POST['id_penumpang'];
+$show_eticket = false;
+$tiket = null;
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nama = $_POST['nama'];
-    $kontak = $_POST['kontak'];
+    $kereta_id = $_POST['kereta_id'];
     $tanggal = $_POST['tanggal'];
-    $waktu = $_POST['waktu'];
+    $jadwal_kereta = $_POST['jadwal_kereta'];
+    $harga = $_POST['harga'];
     $rute = $_POST['rute'];
-    $jumlah = $_POST['jumlah'];
+    $nomor_hp = $_POST['nomor_hp'];
 
-    $stmt = $koneksi->prepare("UPDATE pemesanan SET nama=?, kontak=?, tanggal=?, waktu=?, rute=?, jumlah=? WHERE id_penumpang=?");
-    $stmt->bind_param("sssssis", $nama, $kontak, $tanggal, $waktu, $rute, $jumlah, $id);
-    $stmt->execute();
-    $stmt->close();
-    header("Location: ?view=1");
-    exit();
+    $query = "INSERT INTO tiket (nama, kereta_id, tanggal, jadwal_kereta, harga, rute, nomor_hp)
+              VALUES ('$nama', '$kereta_id', '$tanggal', '$jadwal_kereta', '$harga', '$rute', '$nomor_hp')";
+    mysqli_query($koneksi, $query);
+
+    $last_id = mysqli_insert_id($koneksi);
+
+    // Ambil data tiket baru untuk ditampilkan e-tiket
+    $query_tiket = "SELECT t.*, k.nama as nama_kereta, k.kelas FROM tiket t
+                    LEFT JOIN keretaapi k ON t.kereta_id = k.id
+                    WHERE t.id = $last_id LIMIT 1";
+    $result_tiket = mysqli_query($koneksi, $query_tiket);
+    $tiket = mysqli_fetch_assoc($result_tiket);
+
+    $show_eticket = true;
 }
+
 ?>
+
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Pemesanan Tiket Kereta</title>
+    <title>Pemesanan Tiket Kereta & E-Tiket</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(to right, #74ebd5, #ACB6E5);
+            background-color: #0a1e4d;
+            color: #ffffff;
             margin: 0;
             padding: 40px;
         }
-        .form-container, .table-container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 800px;
-            margin: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-        h2 {
+        h2, h1 {
             text-align: center;
-            color: #333;
+            color: #ffffff;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.4);
+        }
+
+        /* Form styling */
+        form {
+            max-width: 600px;
+            margin: 20px auto 40px;
+            background-color: #123074;
+            padding: 25px 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
         }
         label {
             display: block;
-            margin-top: 15px;
-            font-weight: 600;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #ffffff;
         }
-        input[type="text"], input[type="date"], input[type="number"] {
+        input[type="text"],
+        input[type="date"],
+        select {
             width: 100%;
-            padding: 10px;
-            margin-top: 5px;
+            padding: 10px 12px;
+            margin-bottom: 18px;
+            border: 1px solid #4474d9;
             border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 16px;
+            background-color: #0a1e4d;
+            color: #ffffff;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
         }
-        .submit-btn, .action-btn {
-            margin-top: 20px;
-            padding: 10px 15px;
+        input:focus,
+        select:focus {
+            border-color: #a5cdfd;
+            outline: none;
+            background-color: #142c6b;
+        }
+        input[readonly] {
+            background-color: #1a2f61;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            background-color: #1f3bb3;
+            color: #ffffff;
             border: none;
             border-radius: 6px;
-            font-weight: bold;
             cursor: pointer;
-            font-size: 16px;
+            font-weight: bold;
             transition: background-color 0.3s ease;
         }
-        .submit-btn {
-            background-color: #4CAF50;
-            color: white;
-            width: 100%;
+        button:hover {
+            background-color: #3e57cc;
         }
-        .submit-btn:hover {
-            background-color: #43a047;
+
+        /* E-Tiket styling */
+        .eticket-container {
+            max-width: 600px;
+            margin: auto;
+            background-color: #123074;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
         }
-        .action-btn {
-            background-color: #f44336;
-            color: white;
-            text-decoration: none;
-            margin-right: 5px;
-            display: inline-block;
+        .eticket-container .detail {
+            font-size: 1.1em;
+            margin-bottom: 18px;
         }
-        .action-btn.edit {
-            background-color: #2196F3;
-        }
-        .back-btn {
-            display: block;
-            margin-top: 20px;
-            text-align: center;
+        .eticket-container .label {
             font-weight: bold;
-            color: #555;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .back-btn:hover {
-            color: #2196F3;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: center;
-            font-size: 14px;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        /* Styling untuk e-tiket */
-        .eticket {
-            background: linear-gradient(135deg, #2196F3, #21CBF3);
-            color: white;
-            border-radius: 15px;
-            padding: 25px 30px;
-            max-width: 400px;
-            margin: 25px auto 0;
-            box-shadow: 0 12px 20px rgba(33, 203, 243, 0.6);
-            font-size: 16px;
-            font-weight: 600;
-            line-height: 1.5;
-        }
-        .eticket h3 {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
-        }
-        .eticket p {
-            margin: 6px 0;
-        }
-        .eticket p strong {
+            color: #a5cdfd;
+            width: 160px;
             display: inline-block;
-            width: 140px;
-            font-weight: 700;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-style: italic;
+            color: #a5cdfd;
+            font-size: 0.9em;
+        }
+        .button-back {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 10px 25px;
+            background-color: #1f3bb3;
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .button-back:hover {
+            background-color: #3e57cc;
         }
     </style>
+
+    <script>
+    const keretaData = <?= json_encode($jadwal_keretaapi) ?>;
+
+    function updateKeretaInfo() {
+        const select = document.querySelector('select[name="kereta_id"]');
+        const selectedId = select.value;
+
+        const jadwalInput = document.querySelector('input[name="jadwal_kereta"]');
+        const hargaInput = document.querySelector('input[name="harga"]');
+        const ruteInput = document.querySelector('input[name="rute"]');
+
+        const kereta = keretaData.find(k => k.id == selectedId);
+        if (kereta) {
+            jadwalInput.value = kereta.jam_keberangkatan;
+            hargaInput.value = kereta.harga;
+            ruteInput.value = kereta.rute_perjalanan;
+        } else {
+            jadwalInput.value = '';
+            hargaInput.value = '';
+            ruteInput.value = '';
+        }
+    }
+
+    window.onload = function() {
+        updateKeretaInfo();
+    }
+    </script>
 </head>
 <body>
-<?php if (isset($_GET['view'])): ?>
-    <div class="table-container">
-        <h2>Daftar Pemesanan Tiket</h2>
-        <table>
-            <tr>
-                <th>ID</th><th>Nama</th><th>Kontak</th><th>Tanggal</th><th>Waktu</th><th>Rute</th><th>Jumlah</th><th>Aksi</th>
-            </tr>
-            <?php
-            $result = $koneksi->query("SELECT * FROM pemesanan");
-            while ($row = $result->fetch_assoc()): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row['id_penumpang']) ?></td>
-                    <td><?= htmlspecialchars($row['nama']) ?></td>
-                    <td><?= htmlspecialchars($row['kontak']) ?></td>
-                    <td><?= htmlspecialchars($row['tanggal']) ?></td>
-                    <td><?= htmlspecialchars($row['waktu']) ?></td>
-                    <td><?= htmlspecialchars($row['rute']) ?></td>
-                    <td><?= htmlspecialchars($row['jumlah']) ?></td>
-                    <td>
-                        <a href="?edit=<?= urlencode($row['id_penumpang']) ?>" class="action-btn edit">Edit</a>
-                        <a href="?delete=<?= urlencode($row['id_penumpang']) ?>" class="action-btn" onclick="return confirm('Hapus data ini?')">Hapus</a>
-                    </td>
-                </tr>
-            <?php endwhile; ?>
-        </table>
-        <a href="?" class="back-btn">← Kembali ke Form Pemesanan</a>
-    </div>
-<?php elseif (isset($_GET['edit'])): 
-    $id_edit = $_GET['edit'];
-    $result = $koneksi->query("SELECT * FROM pemesanan WHERE id_penumpang='$id_edit'");
-    $data = $result->fetch_assoc();
-?>
-    <div class="form-container">
-        <h2>Edit Data Pemesanan</h2>
-        <form method="POST">
-            <input type="hidden" name="id_penumpang" value="<?= htmlspecialchars($data['id_penumpang']) ?>">
-            <label>Nama:</label>
-            <input type="text" name="nama" value="<?= htmlspecialchars($data['nama']) ?>" required>
-            <label>Kontak:</label>
-            <input type="text" name="kontak" value="<?= htmlspecialchars($data['kontak']) ?>" required>
-            <label>Tanggal:</label>
-            <input type="date" name="tanggal" value="<?= htmlspecialchars($data['tanggal']) ?>" required>
-            <label>Waktu:</label>
-            <input type="text" name="waktu" value="<?= htmlspecialchars($data['waktu']) ?>" required>
-            <label>Rute:</label>
-            <input type="text" name="rute" value="<?= htmlspecialchars($data['rute']) ?>" required>
-            <label>Jumlah Penumpang:</label>
-            <input type="number" name="jumlah" value="<?= htmlspecialchars($data['jumlah']) ?>" required>
-            <button type="submit" name="update" class="submit-btn">Update</button>
-        </form>
-        <a href="?view=1" class="back-btn">← Kembali</a>
-    </div>
+
+<?php if (!$show_eticket): ?>
+    <h2>Form Pemesanan Tiket Kereta</h2>
+    <form method="POST" action="">
+        <label>Nama:</label>
+        <input type="text" name="nama" required>
+
+        <label>Nomor HP:</label>
+        <input type="text" name="nomor_hp" required pattern="[0-9]+" title="Hanya angka">
+
+        <label>Pilih Kereta:</label>
+        <select name="kereta_id" onchange="updateKeretaInfo()" required>
+            <option value="">-- Pilih Kereta --</option>
+            <?php foreach ($jadwal_keretaapi as $kereta): ?>
+                <option value="<?= $kereta['id'] ?>"><?= htmlspecialchars($kereta['nama']) ?> (<?= htmlspecialchars($kereta['kelas']) ?>)</option>
+            <?php endforeach; ?>
+        </select>
+
+        <label>Jam Keberangkatan:</label>
+        <input type="text" name="jadwal_kereta" readonly>
+
+        <label>Harga:</label>
+        <input type="text" name="harga" readonly>
+
+        <label>Rute Perjalanan:</label>
+        <input type="text" name="rute" readonly>
+
+        <label>Tanggal Keberangkatan:</label>
+        <input type="date" name="tanggal" required>
+
+        <button type="submit">Pesan Tiket</button>
+    </form>
+
 <?php else: ?>
-    <div class="form-container">
-        <h2>Silakan isi form pemesanan tiket atau <a href="?view=1">lihat daftar</a></h2>
-        <form method="POST">
-        <?php
-            $eticket = null;
+    <h1>E-Tiket Kereta</h1>
+    <div class="eticket-container">
+        <div class="detail"><span class="label">Nama Pemesan:</span> <?= htmlspecialchars($tiket['nama']) ?></div>
+        <div class="detail"><span class="label">Nomor HP:</span> <?= htmlspecialchars($tiket['nomor_hp']) ?></div>
+        <div class="detail"><span class="label">Nama Kereta:</span> <?= htmlspecialchars($tiket['nama_kereta']) ?> (<?= htmlspecialchars($tiket['kelas']) ?>)</div>
+        <div class="detail"><span class="label">Jam Keberangkatan:</span> <?= htmlspecialchars($tiket['jadwal_kereta']) ?></div>
+        <div class="detail"><span class="label">Rute Perjalanan:</span> <?= htmlspecialchars($tiket['rute']) ?></div>
+        <div class="detail"><span class="label">Tanggal Keberangkatan:</span> <?= htmlspecialchars($tiket['tanggal']) ?></div>
+        <div class="detail"><span class="label">Harga Tiket:</span> Rp <?= number_format($tiket['harga'], 0, ',', '.') ?></div>
 
-            if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['update'])) {
-                $rute = htmlspecialchars($_POST['rute']);
-                $waktu = htmlspecialchars($_POST['waktu']);
-                $nama = htmlspecialchars($_POST['nama']);
-                $kontak = htmlspecialchars($_POST['kontak']);
-                $tanggal = htmlspecialchars($_POST['tanggal']);
-                $jumlah = (int)$_POST['jumlah'];
-                $id_penumpang = uniqid('ID-');
-                $kursi = rand(1, 20) . 'A';
+        <div class="footer">
+            Terima kasih telah memesan tiket kereta bersama kami.<br>
+            Selamat menikmati perjalanan Anda!
+        </div>
 
-                $stmt = $koneksi->prepare("INSERT INTO pemesanan (id_penumpang, nama, kontak, tanggal, waktu, rute, jumlah, kursi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("ssssssis", $id_penumpang, $nama, $kontak, $tanggal, $waktu, $rute, $jumlah, $kursi);
-                $stmt->execute();
-                $stmt->close();
-
-                $eticket = [
-                    'id_penumpang' => $id_penumpang,
-                    'nama' => $nama,
-                    'kontak' => $kontak,
-                    'tanggal' => $tanggal,
-                    'waktu' => $waktu,
-                    'rute' => $rute,
-                    'jumlah' => $jumlah,
-                    'kursi' => $kursi
-                ];
-            }
-        ?>
-            <label for="nama">Nama Lengkap:</label>
-            <input type="text" id="nama" name="nama" required>
-
-            <label for="kontak">No. Kontak:</label>
-            <input type="text" id="kontak" name="kontak" required>
-
-            <label for="tanggal">Tanggal Keberangkatan:</label>
-            <input type="date" id="tanggal" name="tanggal" required>
-
-            <label for="waktu">Waktu Keberangkatan:</label>
-            <input type="text" id="waktu" name="waktu" placeholder="Contoh: 07:00 WIB" required>
-
-            <label for="rute">Rute Perjalanan:</label>
-            <input type="text" id="rute" name="rute" placeholder="Contoh: Solo Balapan → Yogyakarta" required>
-
-            <label for="jumlah">Jumlah Penumpang:</label>
-            <input type="number" id="jumlah" name="jumlah" min="1" required>
-
-            <button type="submit" class="submit-btn">Pesan</button>
-        </form>
-        <a href="home.php" class="back-btn">← Back</a>
-        <?php if ($eticket): ?>
+        <button class="button-back" onclick="window.location='tiket2.php'">Pesan Tiket Lagi</button>
+    </div>
+    <?php if ($eticket): ?>
             <div class="eticket" tabindex="0" aria-label="E-Tiket Kereta Api">
                 <h3>E-Tiket Kereta Api</h3>
                 <p><strong>ID Pemesanan:</strong> <?= htmlspecialchars($eticket['id_penumpang']) ?></p>
@@ -277,8 +256,7 @@ if (isset($_POST['update'])) {
             </div>
             <a href="?" class="back-btn">← Kembali ke Menu Utama</a>
         <?php endif; ?>
-    </div>
 <?php endif; ?>
+
 </body>
 </html>
-
