@@ -18,10 +18,13 @@ if (!isset($_SESSION['username'])) {
       margin: 0;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       color: white;
+      overflow-x: hidden;
     }
+
     .home-container {
       background: #ffffff22;
       padding: 40px 50px;
@@ -31,18 +34,22 @@ if (!isset($_SESSION['username'])) {
       max-width: 700px;
       text-align: center;
       backdrop-filter: blur(12px);
+      z-index: 2;
     }
+
     h1 {
       margin-bottom: 30px;
       font-weight: 700;
       font-size: 2.5rem;
     }
+
     .btn-group {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 20px;
     }
+
     a.button {
       background-color: #4a90e2;
       padding: 18px 36px;
@@ -56,8 +63,37 @@ if (!isset($_SESSION['username'])) {
       max-width: 220px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
+
     a.button:hover {
       background-color: #357abd;
+    }
+
+    /* Kereta Berjalan */
+    .rel-kereta {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 150px;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .kereta {
+      position: absolute;
+      bottom: 0;
+      left: 100%;
+      width: 600px;
+      animation: jalanKereta 15s linear infinite;
+    }
+
+    @keyframes jalanKereta {
+      0% {
+        left: 100%;
+      }
+      100% {
+        left: -350px;
+      }
     }
   </style>
 </head>
@@ -70,6 +106,11 @@ if (!isset($_SESSION['username'])) {
       <a href="datapenumpang.php" class="button">Daftar Penumpang</a>
       <a href="logout.php" class="button">Logout</a>
     </div>
+  </div>
+
+  <!-- Kereta Berjalan -->
+  <div class="rel-kereta">
+    <img src="gambar.png" alt="Kereta" class="kereta">
   </div>
 </body>
 </html>
