@@ -9,43 +9,6 @@ if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
 
-$edit_data = null;
-if (isset($_GET['edit'])) {
-    $id = $_GET['edit'];
-    $stmt = $conn->prepare("SELECT * FROM keretaapi WHERE id = ?");
-    $stmt->bind_param("i", $id); // Assuming id is an integer
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if (!$result) {
-        die("Query failed: " . $conn->error);
-    }
-    
-    $edit_data = $result->fetch_assoc();
-}
-
-// Handle form submission for insert/update
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $id = $_POST['id'] ?? null;
-    $nama = $_POST['nama'];
-    $kelas = $_POST['kelas'];
-    $kapasitas = $_POST['kapasitas'];
-
-    if (isset($_POST['update'])) {
-        // Update logic
-        $stmt = $conn->prepare("UPDATE keretaapi SET nama=?, kelas=?, kapasitas=? WHERE id=?");
-        $stmt->bind_param("ssii", $nama, $kelas, $kapasitas, $id);
-        $stmt->execute();
-    } else {
-        // Insert logic
-        $stmt = $conn->prepare("INSERT INTO keretaapi (nama, kelas, kapasitas) VALUES (?, ?, ?)");
-        $stmt->bind_param("ssi", $nama, $kelas, $kapasitas);
-        $stmt->execute();
-    }
-    header("Location: jadwalkereta.php"); // Redirect to avoid form resubmission
-    exit();
-}
-
 // Fetch all records for display
 $result = $conn->query("SELECT * FROM keretaapi");
 if (!$result) {
