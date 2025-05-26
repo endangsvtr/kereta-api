@@ -9,7 +9,6 @@ if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }
 
-// Fetch all records for display
 $result = $conn->query("SELECT * FROM keretaapi");
 if (!$result) {
     die("Query failed: " . $conn->error);
@@ -21,7 +20,6 @@ if (!$result) {
 <head>
     <title>Jadwal Kereta Api</title>
     <style>
-        /* Reset box sizing */
         *, *::before, *::after {
             box-sizing: border-box;
         }
@@ -157,6 +155,7 @@ if (!$result) {
         }
     </style>
 </head>
+//untuk membuat tabel
 <body>
     <center>
         <h1>JADWAL KERETA API</h1>
