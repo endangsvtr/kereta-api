@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
       margin-bottom: 16px;
       border: none;
       border-radius: 12px;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.89);
       font-size: 15px;
       color: #333;
     }
@@ -154,3 +154,4 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
   </div>
 </body>
 </html>
+
