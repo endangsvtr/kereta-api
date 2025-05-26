@@ -22,6 +22,5 @@ Aplikasi Web Dinamis
 
 - Tampilan Halaman Daftar Penumpang
 
-  ![Image](https://github.com/user-attachments/assets/0ab417ee-e1c2-4c91-918b-d11a2acf8633)
-
+![Image](https://github.com/user-attachments/assets/bcf419b1-13be-4f60-b39b-21f92dd18fad)
 
